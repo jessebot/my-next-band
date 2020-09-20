@@ -6,10 +6,10 @@ workflows:
   build_deploy:
     jobs:
       - aws-ecr/build-and-push-image:
-          account-url: ${AWS_ECR_ACCOUNT_URL}
-          aws-access-key-id: ${ACCESS_KEY_ID}
-          aws-secret-access-key: ${SECRET_ACCESS_KEY}
+          account-url: AWS_ECR_ACCOUNT_URL
+          aws-access-key-id: ACCESS_KEY_ID
+          aws-secret-access-key: SECRET_ACCESS_KEY
           dockerfile: Dockerfile
-          region: ${AWS_REGION}
-          repo: ${ECR_REPO}
+          region: AWS_REGION
+          repo: ECR_REPO
           tag: 'latest,<< pipeline.git.revision >>'
