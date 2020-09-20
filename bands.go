@@ -1,15 +1,12 @@
 package main
 
 import (
-  "net/http"
-  "io/ioutil"
-  "log"
-  "fmt"
-  "encoding/json"
-  "github.com/gorilla/mux"
-  "go.mongodb.org/mongo-driver/mongo"
-  "go.mongodb.org/mongo-driver/mongo/options"
-  "go.mongodb.org/mongo-driver/mongo/readpref"
+    "net/http"
+    "io/ioutil"
+    "log"
+    "fmt"
+    "encoding/json"
+    "github.com/gorilla/mux"
 )
 
 // define global Bands array
@@ -81,20 +78,11 @@ func handleRequests() {
 }
 
 func main() {
-    // Set mongodb options
-    mongoURI = os.Getenv("mongo_host")
-    mongoDB = os.Getenv("mongo_DB")
-    clientOptions := options.Client().ApplyURI(mongoURI)
-    // Connect to MongoDB
-    client, err := mongo.Connect(context.TODO(), clientOptions)
-    // Check the connection
-    err = client.Ping(context.TODO(), nil)
-    if err != nil {
-        log.Fatal(err)
+    // test bands 
+    Bands = []Band {
+        Band{Name: "Love Sledge", Genre: "Glam Rock", Id: 01},
+        Band{Name: "Power Pizza", Genre: "Food ballads", Id: 02},
     }
-    fmt.Println("Connected to MongoDB!")
-    bandsDatabase := client.Database(mongoDB)
-    bandsCollection := bandsDatabase.Collection("bandData")
     // parse requests
     handleRequests()
 }
