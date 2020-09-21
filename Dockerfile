@@ -11,3 +11,5 @@ RUN go get -u github.com/gorilla/mux
 RUN go build ./bands.go
 
 EXPOSE 8080
+
+CMD ["./bands"]
