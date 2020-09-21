@@ -1,23 +1,25 @@
 package main
 
 import (
-    "net/http"
-    "io/ioutil"
-    "log"
-    "fmt"
+    "context"
     "encoding/json"
+    "fmt"
+    "io/ioutil"
     "github.com/gorilla/mux"
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/mongo/options"
+    "log"
+    "net/http"
+    "os"
 )
 
-// define global Bands array
+// define global Band structure
 type Band struct {
     Name      string `json:"Name"`
     Genre     string `json:"Genre"`
     Id        int    `json"Id"`
 }
-
-// declare global Bands array
-var Bands []Band
 
 // home page always returns this
 func homePage(w http.ResponseWriter, r *http.Request) {
@@ -28,10 +30,30 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 // for just getting ALL bands
 func returnAllBands(w http.ResponseWriter, r *http.Request) {
     fmt.Println("Endpoint Hit: returnAllBands")
-    //for key, value := range Bands {
-    //  fmt.Fprintf.(w, element)
-    //}
-    json.NewEncoder(w).Encode(Bands)
+
+    // Here's an array in which you can store the decoded documents
+    var results []*Band
+
+    bandsCollection := mongoInit()
+    // Passing bson.D{{}} as the filter matches all documents in the collection
+    cur, err := bandsCollection.Find(context.TODO(), bson.D{{}})
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Iterating through the cursor allows us to decode documents one at a time
+    for cur.Next(context.TODO()) {
+        // create a value into which the single document can be decoded
+        var elem Band
+        err := cur.Decode(&elem)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        results = append(results, &elem)
+    }
+
+    json.NewEncoder(w).Encode(results)
 }
 
 // getting a single band by ID
@@ -39,29 +61,38 @@ func returnSingleBand(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     key := vars["name"]
 
-    // iterate through the Bands list
-    for _, band := range Bands {
-        // if band.Name in Bands is the passed in key, print the whole band record
-        if band.Name == key {
-            json.NewEncoder(w).Encode(band)
-        }
+    var result Band
+
+    bandsCollection := mongoInit()
+
+    filter := bson.D{{"name", key}}
+    err := bandsCollection.FindOne(context.TODO(), filter).Decode(&result)
+    if err != nil {
+        log.Fatal(err)
     }
+
+    json.NewEncoder(w).Encode(result)
 }
 
 func createNewBand(w http.ResponseWriter, r *http.Request) {
     // get the body of our POST request
     reqBody, _ := ioutil.ReadAll(r.Body)
     // print this data to logs
-    fmt.Println("%+v", string(reqBody))
+    fmt.Println(string(reqBody))
     // create a variable
     var band Band
     // unmarshal this into a new Bands array
     json.Unmarshal(reqBody, &band)
-    // update our global Bands array to include our new Band
-    Bands = append(Bands, band)
+
+    bandsCollection := mongoInit()
+    insertResult, err := bandsCollection.InsertOne(context.TODO(), band)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // finally, return the newly added band
-    json.NewEncoder(w).Encode(band)
+    fmt.Println(insertResult)
+    fmt.Fprintf(w, "New band added!")
 }
 
 func handleRequests() {
@@ -77,12 +108,26 @@ func handleRequests() {
     log.Fatal(http.ListenAndServe(":8080", myRouter))
 }
 
+func mongoInit() *mongo.Collection{
+    // mongodb
+    var mongoURI string
+    mongoURI = os.Getenv("MONGO_URI")
+
+    var mongoDB string
+    mongoDB = os.Getenv("MONGO_DB")
+
+    clientOptions := options.Client().ApplyURI(mongoURI)
+    // Connect to MongoDB
+    client, err := mongo.Connect(context.TODO(), clientOptions)
+    // Check the connection
+    if err != nil { log.Fatal(err) }
+
+    // get collection
+    bandsCollection := client.Database(mongoDB).Collection("bands")
+
+    return bandsCollection
+}
+
 func main() {
-    // test bands 
-    Bands = []Band {
-        Band{Name: "Love Sledge", Genre: "Glam Rock", Id: 01},
-        Band{Name: "Power Pizza", Genre: "Food ballads", Id: 02},
-    }
-    // parse requests
     handleRequests()
 }
